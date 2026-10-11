@@ -16,8 +16,15 @@ const Pin sclk = {11};
 const Pin cs0 = {8};
 const Pin cs1 = {7};
 
-const SPI spi = {
-    .speed = 20000000, // 20 MHz
+// previous version:
+// const SPI spi = {
+//     .speed = 20000000, // 20 MHz
+//
+// why the change: the cc1101 maxes out at 6.5 MHz for back-to-back bytes (datasheet table 22), and
+// the pi's SPI0 sends bytes with no gap, so 20 MHz is out of spec. 1 MHz is plenty for bring-up.
+// const dropped because SPI_Config takes a non-const SPI * and -Werror rejects passing &spi.
+SPI spi = {
+    .speed = 1000000, // 1 MHz. cc1101 tops out at 6.5 MHz for gapless bursts
     .cpol = CPOL_0,
     .cpha = CPHA_0,
     .msb_first = true,
@@ -49,4 +56,17 @@ I2S i2s = {
     .din = din,
     .dout = dout,
     .clk = &pcm_clk
+};
+
+CC1101 radio = {
+    .spi_device = SPI_DEVICE_1, // CSn on GPIO7 (CE1)
+    .gdo0 = {5},
+    .gdo2 = {23},
+};
+
+// second module for loopback testing, shares SCLK/MOSI/MISO with radio
+CC1101 radio_b = {
+    .spi_device = SPI_DEVICE_0, // CSn on GPIO8 (CE0)
+    .gdo0 = {6},
+    .gdo2 = {22},
 };

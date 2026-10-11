@@ -19,11 +19,17 @@ CFLAGS += -I. -Idrivers
 
 all: $(PROGS)
 
-main.bin: main.o $(OBJS) $(MEMMAP)
-	$(CC) $(CFLAGS) start.o $< $(filter-out start.o, $(OBJS)) -T $(MEMMAP) -lgcc -o main.elf
-	$(ARM)-objcopy main.elf -O binary $@
-	$(ARM)-objdump -D main.elf > main.list
-	pi-install main.bin
+# main.bin: main.o $(OBJS) $(MEMMAP)
+# 	$(CC) $(CFLAGS) start.o $< $(filter-out start.o, $(OBJS)) -T $(MEMMAP) -lgcc -o main.elf
+# 	$(ARM)-objcopy main.elf -O binary $@
+# 	$(ARM)-objdump -D main.elf > main.list
+# 	pi-install main.bin
+
+transmit_test.bin: transmit_test.o $(OBJS) $(MEMMAP)
+	$(CC) $(CFLAGS) start.o $< $(filter-out start.o, $(OBJS)) -T $(MEMMAP) -lgcc -o transmit_test.elf
+	$(ARM)-objcopy transmit_test.elf -O binary $@
+	$(ARM)-objdump -D transmit_test.elf > transmit_test.list
+	pi-install transmit_test.bin
 
 %.bin: %.o $(OBJS) $(MEMMAP) Makefile *.h *.c drivers/*.h drivers/*.c
 	$(CC) $(CFLAGS) $(OBJS) $< -T $(MEMMAP) -lgcc -o $*.elf
