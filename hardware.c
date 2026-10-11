@@ -28,3 +28,25 @@ const SPI spi = {
     .cs0 = cs0,
     .cs1 = cs1
 };
+
+const Pin bclk = {18};
+const Pin fs = {19};
+const Pin din = {20};
+const Pin dout = {21};
+
+GPCLK pcm_clk = {
+    .clk_periph = PCMCLK,
+    .source = GPCLK_SRC_PLLD,
+    .speed = 2000000
+};
+
+I2S i2s = {
+    .frame_size = 32,
+    .rx_data_size = 24,
+    .tx_data_size = 24,
+    .bclk = bclk,
+    .fs = fs,
+    .din = din,
+    .dout = dout,
+    .clk = &pcm_clk
+};

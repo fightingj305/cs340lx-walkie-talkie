@@ -18,3 +18,10 @@ extern const Pin miso;
 extern const Pin sclk;
 extern const Pin cs0;
 extern const Pin cs1;
+
+extern I2S i2s;
+extern GPCLK pcm_clk;
+extern const Pin bclk;
+extern const Pin fs;
+extern const Pin din;
+extern const Pin dout;
