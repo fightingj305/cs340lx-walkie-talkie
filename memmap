@@ -1,0 +1,31 @@
+SECTIONS
+{
+    /* link the code first at 0x8000. */
+    .text 0x8000 : { 
+        *(.text*)
+        . = ALIGN(8);
+    } 
+
+    /* read-only data */
+    .rodata : { 
+        *(.rodata*) 
+        . = ALIGN(8);
+    }
+    /* rw data */
+    .data : { 
+        *(.data*) 
+        . = ALIGN(8);
+    } 
+
+    /* 0 data */
+    .bss : {
+        __bss_start = .;
+        *(.bss*)
+        . = ALIGN(8);
+        __bss_end = .;
+    }
+    /* discard debug info so the .lists are smaller */
+    /DISCARD/ : { *(.debug*) }
+    /DISCARD/ : { *(.comment*) }
+    /DISCARD/ : { *(*.attributes*) }
+}
