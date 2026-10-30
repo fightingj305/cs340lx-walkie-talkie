@@ -2,7 +2,6 @@
 #include "utils.h"
 #include "miniuart.h"
 
-
 void DMA_Reset(DMA_Channel channel) {
     RMW_OR(channel + DMA_CS, DMA_CS_RESET);
 }

@@ -43,6 +43,14 @@ static const CC1101_Reg_Setting settings_250k[] = {
     {CC1101_AGCCTRL2, 0x07}, // all gains allowed, MAGN_TARGET = 42 dB (what section 17.4 uses at 250k)
 };
 
+/* MATHS
+* 250k Baud = 31.25 kB/S
+* 60 bytes per packet ( + 8)
+* Max = 460 packets / S
+* Getting -> 416 Hz
+*/
+
+
 const CC1101_Preset CC1101_PRESET_250K = {
     .name = "250 kBaud GFSK",
     .settings = settings_250k,
@@ -108,35 +116,7 @@ void CC1101_Init(CC1101 *cc1101, const CC1101_Preset *preset) {
 
     CC1101_Reset(cc1101);
 
-    // previous version: data rate / deviation left at reset defaults
-    // // everything not set here stays at reset defaults: 2-FSK, ~115 kBaud, +-47 kHz deviation,
-    // // 4 byte preamble, 0xD391 sync word, variable length packets (section 29)
-    // CC1101_Set_Reg(cc1101, CC1101_MDMCFG4, 0x8C);  // (reset default) RX BW 203 kHz, DRATE_E = 12
-    // CC1101_Set_Reg(cc1101, CC1101_MDMCFG3, 0x22);  // (reset default) DRATE_M = 34 -> 115.051 kBaud
-    // CC1101_Set_Reg(cc1101, CC1101_DEVIATN, 0x47);  // (reset default) +-47.6 kHz deviation
-    //
-    // why the change: at 115 kBaud the NESDR + rtl_433 couldn't decode the packets. rtl_433 -A saw
-    // one 1.2 ms burst per second (matches 136 bits @ 115 kBaud, so TX itself works) but couldn't split
-    // it into bits -- at -s 1024k that's only ~9 samples/bit and rtl_433 is tuned for slower remotes.
-    // 9.6 kBaud gives ~107 samples/bit, so rtl_433 should be able to demod it. lower rate also means
-    // better RX sensitivity (table 7), which a walkie-talkie link wants anyway. deviation scaled down
-    // with the data rate so the signal stays narrow (~50 kHz occupied vs ~200 kHz before).
-
-    // previous version: 9.6 kBaud modem settings written directly here
-    // // everything not set here stays at reset defaults: 2-FSK, 203 kHz RX filter,
-    // // 4 byte preamble, 0xD391 sync word, variable length packets (section 29)
-    // CC1101_Set_Reg(cc1101, CC1101_MDMCFG4, 0x88);  // RX BW 203 kHz, DRATE_E = 8
-    // CC1101_Set_Reg(cc1101, CC1101_MDMCFG3, 0x83);  // DRATE_M = 131 -> 9.596 kBaud (104 us / bit)
-    // CC1101_Set_Reg(cc1101, CC1101_DEVIATN, 0x35);  // +-20.6 kHz deviation
-    //
-    // why the change: these now live in CC1101_PRESET_9K6_SDR (same values) so we can pick
-    // between that and CC1101_PRESET_250K. everything below is shared by all presets.
-
-    // everything not set here or in the preset stays at reset defaults:
-    // 4 byte preamble, 0xD391 sync word, variable length packets (section 29)
     CC1101_Set_Reg(cc1101, CC1101_IOCFG0, 0x06);   // GDO0: high after sync word sent, low at end of packet
-    // CC1101_Set_Reg(cc1101, CC1101_PKTCTRL0, 0x05); // whitening off, FIFO mode, CRC on, variable length
-    // CC1101_Set_Reg(cc1101, CC1101_MCSM0, 0x18);    // calibrate on IDLE->RX/TX, PO_TIMEOUT = 2
     CC1101_Set_Reg(cc1101, CC1101_MCSM0, 0x8);    // No Calibrate every time, PO_TIMEOUT = 2
     CC1101_Set_Reg(cc1101, CC1101_PKTCTRL0, 0x04); // whitening off, FIFO mode, CRC on, variable length
     CC1101_Set_Reg(cc1101, CC1101_MCSM0, 0x18);    // calibrate on IDLE->RX/TX, PO_TIMEOUT = 2
