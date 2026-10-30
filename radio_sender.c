@@ -12,7 +12,7 @@
 DMA_SECTION DMA_CB dma_buf[1024];
 DMA_Write writes[1024];
 
-#define BUFFER_SIZE 4096
+#define BUFFER_SIZE 120
 #define BUFFER_COUNT 8
 
 volatile uint32_t ring_buffer[BUFFER_COUNT][BUFFER_SIZE];
@@ -99,6 +99,8 @@ int main() {
         // Assemble 60 bit packet from wherever we are
         uint8_t packet[SAMPLES_PER_PACKET * BYTES_PER_SAMPLE];
 
+        static uint8_t i = 0;
+
         for(uint32_t packet_i = 0; packet_i < SAMPLES_PER_PACKET * BYTES_PER_SAMPLE; packet_i+= BYTES_PER_SAMPLE) {
             // Skip every other word
             for(uint32_t sample_word_i = 0; sample_word_i < 2; sample_word_i++) {
@@ -106,8 +108,8 @@ int main() {
                     uint32_t word = ring_buffer[current_buffer][head];
                     packet[packet_i] = (word >> 16) & 0xFF;
                     packet[packet_i + 1] = (word >> 8) & 0xFF;
-                    // packet[packet_i] = 0xde;
-                    // packet[packet_i + 1] = 0xad;
+                    // packet[packet_i] = i & 0xFF;
+                    // packet[packet_i + 1] = i & 0xFF;
                 }
 
                 head++;
@@ -116,6 +118,7 @@ int main() {
                 if (head >= BUFFER_SIZE) {
                     head = 0;
                     uint32_t next_buffer = (current_buffer + 1) % BUFFER_COUNT;
+                    UART_Send_String("Blocking");
                     while (DMA_Get_Current_Destination(DMA_Channel_4) >= mem_to_bus((uint32_t) &ring_buffer[next_buffer][0]) &&
                         DMA_Get_Current_Destination(DMA_Channel_4) < mem_to_bus((uint32_t) &ring_buffer[next_buffer][BUFFER_SIZE]));
                     
@@ -126,6 +129,7 @@ int main() {
 
         CC1101_Send_Packet(&radio, packet, SAMPLES_PER_PACKET * BYTES_PER_SAMPLE);
         GPIO_Toggle(&josh);
+        i++;
     }
 
     // while (!(GET32(DMA_Channel_4 + DMA_CS) & DMA_CS_END));         // wait for the capture to finish
