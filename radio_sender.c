@@ -12,6 +12,8 @@
 DMA_SECTION DMA_CB dma_buf[1024];
 DMA_Write writes[1024];
 
+// Small buffer size appears to decrease latency especially when done on sender side
+// On receiver side, decreasing buffer normalizes gaps between packet bursts
 #define BUFFER_SIZE 120
 #define BUFFER_COUNT 8
 
