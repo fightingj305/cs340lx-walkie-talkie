@@ -49,7 +49,6 @@ const Pin dout = {21};
 
 GPCLK pcm_clk = {
     .clk_periph = PCMCLK,
-    // .source = GPCLK_SRC_PLLD,
     .source = GPCLK_SRC_OSC,
     .speed = 8000 * 32 * 2
 };

@@ -138,6 +138,8 @@ void CC1101_Init(CC1101 *cc1101, const CC1101_Preset *preset) {
     // CC1101_Set_Reg(cc1101, CC1101_PKTCTRL0, 0x05); // whitening off, FIFO mode, CRC on, variable length
     // CC1101_Set_Reg(cc1101, CC1101_MCSM0, 0x18);    // calibrate on IDLE->RX/TX, PO_TIMEOUT = 2
     CC1101_Set_Reg(cc1101, CC1101_MCSM0, 0x8);    // No Calibrate every time, PO_TIMEOUT = 2
+    CC1101_Set_Reg(cc1101, CC1101_PKTCTRL0, 0x04); // whitening off, FIFO mode, CRC on, variable length
+    CC1101_Set_Reg(cc1101, CC1101_MCSM0, 0x18);    // calibrate on IDLE->RX/TX, PO_TIMEOUT = 2
     CC1101_Set_Reg(cc1101, CC1101_MCSM1, 0x30);    // CCA default, go to IDLE after RX and after TX
     CC1101_Set_Reg(cc1101, CC1101_FREQ2, (CC1101_FREQ_WORD >> 16) & 0xFF);
     CC1101_Set_Reg(cc1101, CC1101_FREQ1, (CC1101_FREQ_WORD >> 8) & 0xFF);
@@ -145,14 +147,8 @@ void CC1101_Init(CC1101 *cc1101, const CC1101_Preset *preset) {
     CC1101_Set_Reg(cc1101, CC1101_FREND0, 0x10);   // PA_POWER = 0 -> always use PATABLE[0], no ramping
     // added for RX: in variable length mode PKTLEN is the max length accepted (reset default 255).
     // capping it at what fits in the FIFO makes the chip drop packets with a corrupted length byte
-    // CC1101_Set_Reg(cc1101, CC1101_PKTLEN, CC1101_MAX_PAYLOAD);
-    // CC1101_Set_Reg(cc1101, CC1101_PKTLEN, CC1101_MAX_PAYLOAD);
-    
-    CC1101_Set_Reg(cc1101, CC1101_PKTCTRL0, 0x04);   // whitening off, FIFO mode, CRC on, FIXED length
-    // CC1101_Set_Reg(cc1101, CC1101_PKTCTRL1, 0x08);   // no appended status, CRC autoflush on
-    // CC1101_Set_Reg(cc1101, CC1101_PKTCTRL1, 0x00);   // no appended status, CRC autoflush on
-    
     CC1101_Set_Reg(cc1101, CC1101_PKTLEN, 60);
+    CC1101_Set_Reg(cc1101, CC1101_PKTCTRL1, 0);
 
     // ~+10 dBm at 433/915 (table 39). single byte write only touches index 0
     CC1101_Set_Reg(cc1101, CC1101_PATABLE, 0xC0);
@@ -163,6 +159,14 @@ void CC1101_Init(CC1101 *cc1101, const CC1101_Preset *preset) {
     // SCAL only works from IDLE (p.67); takes ~735 us (table 34, p.54) and returns to IDLE
     CC1101_Strobe(cc1101, CC1101_SCAL);
     TIM_SYS_Delay_Millis(1);
+}
+
+void CC1101_Init_IRQ(CC1101 *cc1101) {
+    GPIO_Enable_General_IRQ(&cc1101->gdo2);
+    GPIO_Enable_IRQ(&cc1101->gdo2, RISING);
+
+    CC1101_Set_Reg(cc1101, CC1101_IOCFG2, 0);
+    CC1101_Set_Reg(cc1101, CC1101_FIFOTHR, 14);
 }
 
 bool CC1101_Send_Packet(CC1101 *cc1101, const uint8_t *data, uint8_t len) {
@@ -254,7 +258,7 @@ bool CC1101_Wait_RX_Done(CC1101 *cc1101, uint32_t timeout_us) {
 }
 
 // status registers can read corrupt if they change mid-read (section 10.3), so read until stable
-static uint8_t CC1101_Read_RXBYTES(CC1101 *cc1101) {
+uint8_t CC1101_Read_RXBYTES(CC1101 *cc1101) {
     uint8_t prev = CC1101_Read_Status_Reg(cc1101, CC1101_RXBYTES);
     while (1) {
         uint8_t cur = CC1101_Read_Status_Reg(cc1101, CC1101_RXBYTES);
@@ -291,24 +295,39 @@ int CC1101_Read_Packet(CC1101 *cc1101, uint8_t *buf, uint8_t max_len, CC1101_RX_
     SPI_Transaction_Multi(cc1101->spi_device, count + 1, tx, rx);
     uint8_t *fifo = &rx[1];
 
-    uint8_t len = fifo[0];
-    if (len + 3 != count || len > max_len) {
-        UART_Send_String("cc1101: bad RX length byte ");
-        UART_Send_Int(len);
-        UART_Send_String(" with RXBYTES = ");
-        UART_Print_Int(count);
-        CC1101_Strobe(cc1101, CC1101_SFRX);
-        return -1;
-    }
+    uint8_t len = 60;
+    // UART_Send_Hex(rx[0]);
+    // UART_Send_String(" ");
+    // UART_Send_Hex(fifo[0]);
+    // UART_Send_String(" ");
+    // UART_Send_Hex(fifo[1]);
+    // UART_Send_String(" ");
+    // UART_Send_Hex(fifo[2]);
+    // UART_Send_String(" ");
+    // UART_Send_Hex(fifo[3]);
+    // UART_Send_String(" ");
+    // UART_Send_Hex(fifo[4]);
+    // UART_Send_String(" ");
+    // UART_Send_Hex(fifo[5]);
+    // UART_Send_String(" ");
+    // if (len + 3 != count || len > max_len) {
+    //     UART_Send_String("cc1101: bad RX length byte ");
+    //     UART_Send_Int(len);
+    //     UART_Send_String(" with RXBYTES = ");
+    //     UART_Print_Int(count);
+    //     CC1101_Strobe(cc1101, CC1101_SFRX);
+    //     return -1;
+    // }
 
     for (uint8_t i = 0; i < len; i++) {
-        buf[i] = fifo[1 + i];
+        buf[i] = fifo[i];
     }
 
     // RSSI is 2's complement in half dB steps, offset 74 dB (section 17.3)
-    status->rssi_dbm = (int32_t)(int8_t)fifo[1 + len] / 2 - 74;
-    status->lqi = fifo[2 + len] & 0x7F;
-    status->crc_ok = (fifo[2 + len] >> 7) & 1;
+    // status->rssi_dbm = (int32_t)(int8_t)fifo[1 + len] / 2 - 74;
+    // status->lqi = fifo[2 + len] & 0x7F;
+    // status->crc_ok = (fifo[2 + len] >> 7) & 1;
+    status->crc_ok = true;
     return len;
 }
 

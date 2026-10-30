@@ -17,6 +17,13 @@ SECTIONS
         . = ALIGN(8);
     } 
 
+    .dma_buffer (NOLOAD) : ALIGN(32)
+    {
+        _dma_start = .;
+        KEEP(*(.dma_mem))
+        _dma_end = .;
+    }
+    
     /* 0 data */
     .bss : {
         __bss_start = .;

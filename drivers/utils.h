@@ -3,6 +3,10 @@
 #include <stdint.h>
 #include "miniuart.h"
 
+#define BCM_PERIPH_BASE     0x20000000
+#define BCM_PERIPH_BUS_BASE 0x7E000000
+#define BCM_RAM_BUS         0x40000000
+
 #define CORE_CLOCK_RATE 250000000
 #define ARM_CLOCK_RATE 700000000
 
@@ -62,4 +66,12 @@ static inline void DSB(void) {
 static inline void DMB(void) {
     asm volatile("mcr p15, 0, %0, c7, c10, 5" :: "r"(0) : "memory");
     ISB();
+}
+
+static inline uint32_t mem_to_bus(uint32_t addr) {
+    if (addr >= BCM_PERIPH_BASE && addr < (BCM_PERIPH_BASE + 0x01000000)) {
+        return (addr - BCM_PERIPH_BASE) + BCM_PERIPH_BUS_BASE;
+    } else {
+        return addr | BCM_RAM_BUS;
+    }
 }

@@ -110,3 +110,8 @@ uint32_t I2S_Read_Value(void) {
     GET32(PCM_FIFO_A);
     return out;
 }
+
+void I2S_Setup_DMA() {
+    PUT32(PCM_DREQ_A, 1 << 8);
+    RMW_OR(PCM_CS_A, PCM_CS_DMAEN);
+}

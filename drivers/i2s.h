@@ -143,3 +143,4 @@ void I2S_Enable_IRQ(void);
 void I2S_Clear_IRQ(void);
 void I2S_Send_Value(uint32_t frame); // sends a left word with empty right word
 uint32_t I2S_Read_Value(); // will read a whole frame and only give left word
+void I2S_Setup_DMA();

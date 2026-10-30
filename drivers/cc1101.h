@@ -112,6 +112,7 @@ void CC1101_Reset(CC1101 *cc1101);
 // void CC1101_Init(CC1101 *cc1101); // assumes SPI_Config already done
 // why: modem settings moved into presets so we can switch between SDR-debuggable and fast configs
 void CC1101_Init(CC1101 *cc1101, const CC1101_Preset *preset); // assumes SPI_Config already done
+void CC1101_Init_IRQ(CC1101 *cc1101);
 void CC1101_Apply_Preset(CC1101 *cc1101, const CC1101_Preset *preset); // radio must be IDLE
 bool CC1101_Send_Packet(CC1101 *cc1101, const uint8_t *data, uint8_t len); // blocks until sent
 
@@ -129,3 +130,4 @@ int CC1101_Read_Packet(CC1101 *cc1101, uint8_t *buf, uint8_t max_len, CC1101_RX_
 // convenience: Start_RX + Wait_RX_Done + Read_Packet. blocks up to timeout_us for one packet.
 // returns payload len, or -1 on timeout / bad packet. check status->crc_ok before trusting the data
 int CC1101_Receive(CC1101 *cc1101, uint8_t *buf, uint8_t max_len, CC1101_RX_Status *status, uint32_t timeout_us);
+uint8_t CC1101_Read_RXBYTES(CC1101 *cc1101) ;
