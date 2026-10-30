@@ -75,3 +75,11 @@ static inline uint32_t mem_to_bus(uint32_t addr) {
         return addr | BCM_RAM_BUS;
     }
 }
+
+static inline uint32_t bus_to_mem(uint32_t addr) {
+    if (addr >= BCM_PERIPH_BUS_BASE && addr < (BCM_PERIPH_BUS_BASE + 0x01000000)) {
+        return (addr - BCM_PERIPH_BUS_BASE) + BCM_PERIPH_BASE;
+    } else {
+        return addr & ~0xC0000000; // strip the bus alias bits (0x0/0x4/0x8/0xC)
+    }
+}

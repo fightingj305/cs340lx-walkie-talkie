@@ -71,5 +71,9 @@ void DMA_CB_Print(DMA_CB *dma_cb) {
 }
 
 uint32_t DMA_Get_Current_Source(DMA_Channel channel) {
-    return ((DMA_CB *) GET32(channel + DMA_CONBLK_AD))->source_ad;
+    return ((DMA_CB *) bus_to_mem(GET32(channel + DMA_CONBLK_AD)))->source_ad;
+}
+
+uint32_t DMA_Get_Current_Destination(DMA_Channel channel) {
+    return ((DMA_CB *) bus_to_mem(GET32(channel + DMA_CONBLK_AD)))->dest_ad;
 }

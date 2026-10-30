@@ -112,6 +112,7 @@ uint32_t I2S_Read_Value(void) {
 }
 
 void I2S_Setup_DMA() {
-    PUT32(PCM_DREQ_A, 1 << 8);
+    PUT32(PCM_DREQ_A, (1 << 8 | 0b1));
+    // PUT32(PCM_DREQ_A, 0x10300120); // WE HAVE
     RMW_OR(PCM_CS_A, PCM_CS_DMAEN);
 }

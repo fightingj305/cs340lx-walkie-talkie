@@ -22,12 +22,14 @@ all: $(PROGS)
 main.bin: main.o $(OBJS) $(MEMMAP)
 	$(CC) $(CFLAGS) start.o $< $(filter-out start.o, $(OBJS)) -T $(MEMMAP) -lgcc -o main.elf
 	$(ARM)-objcopy main.elf -O binary $@
-	$(ARM)-objdump -D main.elf > main.list
+# 	$(ARM)-objdump -D main.elf > main.list
+	$(ARM)-objdump -d main.elf > main.list
 
 %.bin: %.o $(OBJS) $(MEMMAP) Makefile *.h *.c drivers/*.h drivers/*.c
 	$(CC) $(CFLAGS) $(OBJS) $< -T $(MEMMAP) -lgcc -o $*.elf
 	$(ARM)-objcopy $*.elf -O binary $@
-	$(ARM)-objdump -D $*.elf > $*.list
+# 	$(ARM)-objdump -D $*.elf > $*.list
+	$(ARM)-objdump -d $*.elf > $*.list
 
 %.o: %.c Makefile *.h *.c
 	$(CC) $(CFLAGS) -c $< -o $@

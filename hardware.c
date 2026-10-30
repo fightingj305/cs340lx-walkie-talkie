@@ -51,6 +51,7 @@ GPCLK pcm_clk = {
     .clk_periph = PCMCLK,
     .source = GPCLK_SRC_OSC,
     .speed = 8000 * 32 * 2
+    // .speed = 16000 * 32 * 2
 };
 
 I2S i2s = {

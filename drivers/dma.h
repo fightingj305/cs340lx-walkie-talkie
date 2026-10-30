@@ -114,3 +114,4 @@ void DMA_Transmit(DMA_Channel channel, DMA_Write *writes, DMA_CB *dma_buf, uint3
 void DMA_Transmit_Terminating(DMA_Channel channel, DMA_Write *writes, DMA_CB *dma_buf, uint32_t num_writes);
 void DMA_CB_Print(DMA_CB *dma_cb);
 uint32_t DMA_Get_Current_Source(DMA_Channel channel);
+uint32_t DMA_Get_Current_Destination(DMA_Channel channel);
