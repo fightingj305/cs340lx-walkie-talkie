@@ -145,8 +145,8 @@ void CC1101_Init_IRQ(CC1101 *cc1101) {
     GPIO_Enable_General_IRQ(&cc1101->gdo2);
     GPIO_Enable_IRQ(&cc1101->gdo2, RISING);
 
-    CC1101_Set_Reg(cc1101, CC1101_IOCFG2, 0);
-    CC1101_Set_Reg(cc1101, CC1101_FIFOTHR, 14);
+    CC1101_Set_Reg(cc1101, CC1101_IOCFG2, 1);
+    CC1101_Set_Reg(cc1101, CC1101_FIFOTHR, 15);
 }
 
 bool CC1101_Send_Packet(CC1101 *cc1101, const uint8_t *data, uint8_t len) {
@@ -290,24 +290,24 @@ int CC1101_Read_Packet(CC1101 *cc1101, uint8_t *buf, uint8_t max_len, CC1101_RX_
     // UART_Send_String(" ");
     // UART_Send_Hex(fifo[5]);
     // UART_Send_String(" ");
-    // if (len + 3 != count || len > max_len) {
-    //     UART_Send_String("cc1101: bad RX length byte ");
-    //     UART_Send_Int(len);
-    //     UART_Send_String(" with RXBYTES = ");
-    //     UART_Print_Int(count);
-    //     CC1101_Strobe(cc1101, CC1101_SFRX);
-    //     return -1;
-    // }
+    if (len + 2 != count || len > max_len) {
+        UART_Send_String("cc1101: bad RX length byte ");
+        UART_Send_Int(len);
+        UART_Send_String(" with RXBYTES = ");
+        UART_Print_Int(count);
+        CC1101_Strobe(cc1101, CC1101_SFRX);
+        return -1;
+    }
 
     for (uint8_t i = 0; i < len; i++) {
         buf[i] = fifo[i];
     }
 
     // RSSI is 2's complement in half dB steps, offset 74 dB (section 17.3)
-    // status->rssi_dbm = (int32_t)(int8_t)fifo[1 + len] / 2 - 74;
-    // status->lqi = fifo[2 + len] & 0x7F;
-    // status->crc_ok = (fifo[2 + len] >> 7) & 1;
-    status->crc_ok = true;
+    status->rssi_dbm = (int32_t)(int8_t)fifo[ len] / 2 - 74;
+    status->lqi = fifo[1 + len] & 0x7F;
+    status->crc_ok = (fifo[1 + len] >> 7) & 1;
+    // status->crc_ok = true;
     return len;
 }
 
