@@ -109,6 +109,7 @@ typedef struct {
 
 void DMA_Reset(DMA_Channel channel);
 void DMA_Start(DMA_Channel channel);
+void DMA_Pause(DMA_Channel channel);
 void DMA_Set_Block(DMA_Channel channel, uint32_t cb);
 void DMA_Transmit(DMA_Channel channel, DMA_Write *writes, DMA_CB *dma_buf, uint32_t num_writes);
 void DMA_Transmit_Terminating(DMA_Channel channel, DMA_Write *writes, DMA_CB *dma_buf, uint32_t num_writes);

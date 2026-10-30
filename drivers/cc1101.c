@@ -128,7 +128,6 @@ void CC1101_Init(CC1101 *cc1101, const CC1101_Preset *preset) {
     // added for RX: in variable length mode PKTLEN is the max length accepted (reset default 255).
     // capping it at what fits in the FIFO makes the chip drop packets with a corrupted length byte
     CC1101_Set_Reg(cc1101, CC1101_PKTLEN, 60);
-    // CC1101_Set_Reg(cc1101, CC1101_PKTCTRL1, 0);
     CC1101_Set_Reg(cc1101, CC1101_PKTCTRL1, 0x04); // APPEND_STATUS=true
 
     // ~+10 dBm at 433/915 (table 39). single byte write only touches index 0

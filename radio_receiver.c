@@ -8,55 +8,48 @@
 DMA_SECTION DMA_CB dma_buf[1024];
 DMA_Write writes[1024];
 
-#define BUFFER_SIZE 4096
-#define BUFFER_COUNT 8
+#define BUFFER_SIZE 256
+#define BUFFER_COUNT 16
 volatile uint32_t ring_buffer[BUFFER_COUNT][BUFFER_SIZE];
 uint32_t head = 0;
 uint32_t current_buffer = BUFFER_COUNT - 1;
-
 uint32_t output;
 
-void __attribute__((interrupt("IRQ"))) interrupt_vector(void) {
-    // if (TIM_Pending()) {
-    //     // I2S_Send_Value(output & 0x00FFFFFF);
-    //     // uint32_t value = (head % (BUFFER_SIZE / 32))  < (BUFFER_SIZE / 64) ? 0x7FFFFF : 0 ;
-    //     uint32_t value = (head % (BUFFER_SIZE / 32))  * 0x7FFFFF/(BUFFER_SIZE / 32);
-    //     // UART_Print_Hex(value);
-    //     ring_buffer[current_buffer][head] = value;
-    //     head++;
-    //     if (head >= BUFFER_SIZE) {
-    //         head = 0;
-    //         uint32_t next_buffer = (current_buffer + 1) % BUFFER_COUNT;
-    //         while (DMA_Get_Current_Source(DMA_Channel_4) >= (uint32_t)&ring_buffer[next_buffer][0] &&
-    //             DMA_Get_Current_Source(DMA_Channel_4) < (uint32_t)&ring_buffer[next_buffer][BUFFER_SIZE]);
-    //         current_buffer = next_buffer;
-    //     }
-    //     I2S_Send_Value(value);
-    //     TIM_Clear_Pending();
-    // }
-    // else 
+volatile uint32_t last_packet;
+volatile bool started = false;
+
+void __attribute__((interrupt("IRQ"))) interrupt_vector(void) { 
     if (GPIO_Check_Any_Pin_IRQ() && GPIO_Check_Pin_IRQ(&radio_b.gdo2)) {
         CC1101_RX_Status status;
         uint8_t mic_val[60];
         int retval = CC1101_Read_Packet(&radio_b, mic_val, 60, &status);
-        for (uint32_t i = 0; i < 60; i++) {
-            // uint32_t value = mic_val[i] << 16 |  mic_val[i + 1] << 8 |  mic_val[i + 2];
-            // uint32_t value = mic_val[i] << 16;
-            uint32_t value = (head % BUFFER_SIZE / 16)  < BUFFER_SIZE / 32 ? 0x7FFFFF : 0 ;
-            UART_Print_Hex(value);
-            ring_buffer[current_buffer][head] = value;
-            head++;
-            if (head >= BUFFER_SIZE) {
-                head = 0;
-                uint32_t next_buffer = (current_buffer + 1) % BUFFER_COUNT;
-                while (DMA_Get_Current_Source(DMA_Channel_4) >= (uint32_t)&ring_buffer[next_buffer][0] &&
-                    DMA_Get_Current_Source(DMA_Channel_4) < (uint32_t)&ring_buffer[next_buffer][BUFFER_SIZE]);
-                current_buffer = next_buffer;
+        if (status.crc_ok) {
+            uint32_t start = TIM_SYS_Get_Ticks();
+            if (!started) {
+                DMA_Start(DMA_Channel_4);
+                started = true;
             }
-            I2S_Send_Value(value);
+            for (uint32_t i = 0; i < 60; i+=2) {
+                uint32_t value = mic_val[i] << 16 | mic_val[i+1] << 8;
+                ring_buffer[current_buffer][head] = value;
+                head++;
+                if (head >= BUFFER_SIZE) {
+                    head = 0;
+                    uint32_t next_buffer = (current_buffer + 1) % BUFFER_COUNT;
+                    while (DMA_Get_Current_Source(DMA_Channel_4) >= ((uint32_t)&ring_buffer[next_buffer][0]) &&
+                        DMA_Get_Current_Source(DMA_Channel_4) <((uint32_t)&ring_buffer[next_buffer][BUFFER_SIZE])) {
+                    }
+                    current_buffer = next_buffer;
+                }
+            }
+            last_packet = TIM_SYS_Get_Ticks();
+            GPIO_Toggle(&josh);
         }
         GPIO_Clear_IRQ(&radio_b.gdo2);
         CC1101_Start_RX(&radio_b);
+    }
+    else {
+        PANIC("Unexpected interrupt!");
     }
 }
 
@@ -73,6 +66,9 @@ int main() {
     CC1101_Init(&radio_b, &CC1101_PRESET_250K);
     CC1101_Init_IRQ(&radio_b);
     CC1101_Start_RX(&radio_b);
+        }
+    }
+    
 
     I2S_Init(&i2s);
     
@@ -81,9 +77,7 @@ int main() {
 
     I2S_Setup_DMA();
 
-    TIM_Enable();
-    TIM_Set_Frequency(10000);
-    TIM_Enable_IRQ();
+    GPIO_Config(&josh, OUTPUT);
 
     interrupts_on();
 
@@ -100,13 +94,15 @@ int main() {
     }
 
 
-    // DMA_Transmit(DMA_Channel_4, writes, dma_buf, BUFFER_COUNT);
-    // DMA_Start(DMA_Channel_4);
+    DMA_Transmit(DMA_Channel_4, writes, dma_buf, BUFFER_COUNT);
+    DMA_Start(DMA_Channel_4);
+    started = true;
 
     while (1) {
-        UART_Send_Int(head);
-        UART_Send_String(" ");
-        UART_Print_Hex(ring_buffer[current_buffer][head]);
+        if (started && TIM_SYS_Get_Ticks() > last_packet + 20000) {
+            DMA_Pause(DMA_Channel_4);
+            started = false;
+        }
     }
     
     return 0;

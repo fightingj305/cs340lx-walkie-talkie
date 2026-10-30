@@ -121,8 +121,8 @@ int main() {
                     head = 0;
                     uint32_t next_buffer = (current_buffer + 1) % BUFFER_COUNT;
                     UART_Send_String("Blocking");
-                    while (DMA_Get_Current_Destination(DMA_Channel_4) >= mem_to_bus((uint32_t) &ring_buffer[next_buffer][0]) &&
-                        DMA_Get_Current_Destination(DMA_Channel_4) < mem_to_bus((uint32_t) &ring_buffer[next_buffer][BUFFER_SIZE]));
+                    while (DMA_Get_Current_Destination(DMA_Channel_4) >= ((uint32_t) &ring_buffer[next_buffer][0]) &&
+                        DMA_Get_Current_Destination(DMA_Channel_4) < ((uint32_t) &ring_buffer[next_buffer][BUFFER_SIZE]));
                     
                     current_buffer = next_buffer;
                 }

@@ -10,6 +10,10 @@ void DMA_Start(DMA_Channel channel) {
     PUT32(channel + DMA_CS, DMA_CS_ACTIVE);
 }
 
+void DMA_Pause(DMA_Channel channel) {
+    RMW_AND(channel + DMA_CS, ~DMA_CS_ACTIVE);
+}
+
 void DMA_Set_Block(DMA_Channel channel, uint32_t cb) {
     PUT32(channel + DMA_CONBLK_AD, cb);
 }
@@ -71,9 +75,9 @@ void DMA_CB_Print(DMA_CB *dma_cb) {
 }
 
 uint32_t DMA_Get_Current_Source(DMA_Channel channel) {
-    return ((DMA_CB *) bus_to_mem(GET32(channel + DMA_CONBLK_AD)))->source_ad;
+    return bus_to_mem(((DMA_CB *) bus_to_mem(GET32(channel + DMA_CONBLK_AD)))->source_ad);
 }
 
 uint32_t DMA_Get_Current_Destination(DMA_Channel channel) {
-    return ((DMA_CB *) bus_to_mem(GET32(channel + DMA_CONBLK_AD)))->dest_ad;
+    return bus_to_mem(((DMA_CB *) bus_to_mem(GET32(channel + DMA_CONBLK_AD)))->source_ad);
 }
