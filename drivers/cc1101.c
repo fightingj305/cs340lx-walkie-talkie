@@ -135,8 +135,9 @@ void CC1101_Init(CC1101 *cc1101, const CC1101_Preset *preset) {
     // everything not set here or in the preset stays at reset defaults:
     // 4 byte preamble, 0xD391 sync word, variable length packets (section 29)
     CC1101_Set_Reg(cc1101, CC1101_IOCFG0, 0x06);   // GDO0: high after sync word sent, low at end of packet
-    CC1101_Set_Reg(cc1101, CC1101_PKTCTRL0, 0x05); // whitening off, FIFO mode, CRC on, variable length
-    CC1101_Set_Reg(cc1101, CC1101_MCSM0, 0x18);    // calibrate on IDLE->RX/TX, PO_TIMEOUT = 2
+    // CC1101_Set_Reg(cc1101, CC1101_PKTCTRL0, 0x05); // whitening off, FIFO mode, CRC on, variable length
+    // CC1101_Set_Reg(cc1101, CC1101_MCSM0, 0x18);    // calibrate on IDLE->RX/TX, PO_TIMEOUT = 2
+    CC1101_Set_Reg(cc1101, CC1101_MCSM0, 0x8);    // No Calibrate every time, PO_TIMEOUT = 2
     CC1101_Set_Reg(cc1101, CC1101_MCSM1, 0x30);    // CCA default, go to IDLE after RX and after TX
     CC1101_Set_Reg(cc1101, CC1101_FREQ2, (CC1101_FREQ_WORD >> 16) & 0xFF);
     CC1101_Set_Reg(cc1101, CC1101_FREQ1, (CC1101_FREQ_WORD >> 8) & 0xFF);
@@ -144,12 +145,24 @@ void CC1101_Init(CC1101 *cc1101, const CC1101_Preset *preset) {
     CC1101_Set_Reg(cc1101, CC1101_FREND0, 0x10);   // PA_POWER = 0 -> always use PATABLE[0], no ramping
     // added for RX: in variable length mode PKTLEN is the max length accepted (reset default 255).
     // capping it at what fits in the FIFO makes the chip drop packets with a corrupted length byte
-    CC1101_Set_Reg(cc1101, CC1101_PKTLEN, CC1101_MAX_PAYLOAD);
+    // CC1101_Set_Reg(cc1101, CC1101_PKTLEN, CC1101_MAX_PAYLOAD);
+    // CC1101_Set_Reg(cc1101, CC1101_PKTLEN, CC1101_MAX_PAYLOAD);
+    
+    CC1101_Set_Reg(cc1101, CC1101_PKTCTRL0, 0x04);   // whitening off, FIFO mode, CRC on, FIXED length
+    // CC1101_Set_Reg(cc1101, CC1101_PKTCTRL1, 0x08);   // no appended status, CRC autoflush on
+    // CC1101_Set_Reg(cc1101, CC1101_PKTCTRL1, 0x00);   // no appended status, CRC autoflush on
+    
+    CC1101_Set_Reg(cc1101, CC1101_PKTLEN, 60);
 
     // ~+10 dBm at 433/915 (table 39). single byte write only touches index 0
     CC1101_Set_Reg(cc1101, CC1101_PATABLE, 0xC0);
 
     CC1101_Apply_Preset(cc1101, preset);
+
+    // FS_AUTOCAL = 0, so calibrate once by hand now that frequency/modem registers are final.
+    // SCAL only works from IDLE (p.67); takes ~735 us (table 34, p.54) and returns to IDLE
+    CC1101_Strobe(cc1101, CC1101_SCAL);
+    TIM_SYS_Delay_Millis(1);
 }
 
 bool CC1101_Send_Packet(CC1101 *cc1101, const uint8_t *data, uint8_t len) {
@@ -159,46 +172,66 @@ bool CC1101_Send_Packet(CC1101 *cc1101, const uint8_t *data, uint8_t len) {
     CC1101_Strobe(cc1101, CC1101_SIDLE);
     CC1101_Strobe(cc1101, CC1101_SFTX);
 
+    // uint8_t buf2[2] = {
+    //     CC1101_SIDLE, CC1101_SFTX
+    // };
+    // SPI_Send_Multi(cc1101->spi_device, 2, buf2);
+
     // variable length mode: first FIFO byte is the payload length
-    buf[0] = len;
+    // buf[0] = len;
+    // for (uint8_t i = 0; i < len; i++) {
+    //     buf[i + 1] = data[i];
+    // }
+    // CC1101_Write_Burst(cc1101, CC1101_FIFO, buf, len + 1);
+
     for (uint8_t i = 0; i < len; i++) {
-        buf[i + 1] = data[i];
+        buf[i] = data[i];
     }
-    CC1101_Write_Burst(cc1101, CC1101_FIFO, buf, len + 1);
+
+    CC1101_Write_Burst(cc1101, CC1101_FIFO, buf, len);
 
     CC1101_Strobe(cc1101, CC1101_STX);
 
     // wait on MARCSTATE rather than GDO0 so a GDO0 wiring problem doesn't look like a radio problem
-    bool saw_gdo0 = false;
-    bool left_idle = false;
     uint32_t start = TIM_SYS_Get_Ticks();
-    while (1) {
-        if (GPIO_Read(&cc1101->gdo0) == HIGH) {
-            saw_gdo0 = true;
-        }
-        uint8_t state = CC1101_Read_Status_Reg(cc1101, CC1101_MARCSTATE) & 0x1F;
-        if (state != CC1101_MARC_IDLE) {
-            left_idle = true;
-        } else if (left_idle) {
-            break;
-        }
-        if (state == CC1101_MARC_TXFIFO_UNDERFLOW) {
-            UART_Send_String("cc1101: TX FIFO underflow\n");
-            CC1101_Strobe(cc1101, CC1101_SFTX);
-            return false;
-        }
-        if (TIM_SYS_Get_Ticks() - start > CC1101_TX_TIMEOUT_US) {
-            UART_Send_String("cc1101: TX timeout, MARCSTATE = ");
-            UART_Print_Hex(state);
-            CC1101_Strobe(cc1101, CC1101_SIDLE);
-            return false;
-        }
-    }
 
-    if (!saw_gdo0) {
-        UART_Send_String("cc1101: warning, GDO0 never went high\n");
-    }
+
+    while (GPIO_Read(&cc1101->gdo0) == LOW) {}
+    while (GPIO_Read(&cc1101->gdo0) == HIGH) {}
     return true;
+
+
+    // bool saw_gdo0 = false;
+    // bool left_idle = false;
+    // while (1) {
+    //     if (GPIO_Read(&cc1101->gdo0) == HIGH) {
+    //         saw_gdo0 = true;
+    //         break;
+    //     }
+
+    //     uint8_t state = CC1101_Read_Status_Reg(cc1101, CC1101_MARCSTATE) & 0x1F;
+    //     if (state != CC1101_MARC_IDLE) {
+    //         left_idle = true;
+    //     } else if (left_idle) {
+    //         break;
+    //     }
+    //     if (state == CC1101_MARC_TXFIFO_UNDERFLOW) {
+    //         // UART_Send_String("cc1101: TX FIFO underflow\n");
+    //         CC1101_Strobe(cc1101, CC1101_SFTX);
+    //         return false;
+    //     }
+    //     if (TIM_SYS_Get_Ticks() - start > CC1101_TX_TIMEOUT_US) {
+    //         // UART_Send_String("cc1101: TX timeout, MARCSTATE = ");
+    //         // UART_Print_Hex(state);
+    //         CC1101_Strobe(cc1101, CC1101_SIDLE);
+    //         return false;
+    //     }
+    // }
+
+    // if (!saw_gdo0) {
+    //     UART_Send_String("cc1101: warning, GDO0 never went high\n");
+    // }
+    // return true;
 }
 
 void CC1101_Start_RX(CC1101 *cc1101) {

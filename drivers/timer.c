@@ -23,7 +23,8 @@ void TIM_Disable_IRQ(void) {
 }
 
 void TIM_Set_Frequency(uint32_t hz) {
-    TIM_Set_Load(ARM_CLOCK_RATE / hz);
+    // TIM_Set_Load(ARM_CLOCK_RATE / hz);
+    TIM_Set_Load(CORE_CLOCK_RATE / hz);
 }
 
 void TIM_Set_Load(uint32_t count) {

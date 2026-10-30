@@ -24,7 +24,7 @@ const Pin cs1 = {7};
 // the pi's SPI0 sends bytes with no gap, so 20 MHz is out of spec. 1 MHz is plenty for bring-up.
 // const dropped because SPI_Config takes a non-const SPI * and -Werror rejects passing &spi.
 SPI spi = {
-    .speed = 1000000, // 1 MHz. cc1101 tops out at 6.5 MHz for gapless bursts
+    .speed = 20000000,
     .cpol = CPOL_0,
     .cpha = CPHA_0,
     .msb_first = true,
@@ -41,21 +41,29 @@ const Pin fs = {19};
 const Pin din = {20};
 const Pin dout = {21};
 
+// GPCLK pcm_clk = {
+//     .clk_periph = PCMCLK,
+//     .source = GPCLK_SRC_PLLD,
+//     .speed = 48000 * 32 * 2
+// };
+
 GPCLK pcm_clk = {
     .clk_periph = PCMCLK,
-    .source = GPCLK_SRC_PLLD,
-    .speed = 2000000
+    // .source = GPCLK_SRC_PLLD,
+    .source = GPCLK_SRC_OSC,
+    .speed = 8000 * 32 * 2
 };
 
 I2S i2s = {
     .frame_size = 32,
     .rx_data_size = 24,
     .tx_data_size = 24,
-    .bclk = bclk,
-    .fs = fs,
-    .din = din,
+    .bclk = bclk,// Sclk, 18
+    .fs = fs, // WS on the mic, 19
+    .din = din, // SD on mic, 20
     .dout = dout,
-    .clk = &pcm_clk
+    .clk = &pcm_clk 
+    // L/R mic -> GND
 };
 
 CC1101 radio = {
@@ -70,3 +78,6 @@ CC1101 radio_b = {
     .gdo0 = {6},
     .gdo2 = {22},
 };
+
+
+Pin josh = {26};

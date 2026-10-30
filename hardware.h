@@ -32,3 +32,5 @@ extern const Pin bclk;
 extern const Pin fs;
 extern const Pin din;
 extern const Pin dout;
+
+extern Pin josh;
