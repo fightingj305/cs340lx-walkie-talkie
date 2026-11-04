@@ -4,6 +4,7 @@
 #include "hardware.h"
 #include "utils.h"
 #include "dma.h"
+#include "rng.h"
 
 DMA_SECTION DMA_CB dma_buf[16];
 DMA_SECTION DMA_CB dma_buf2[16];
@@ -152,11 +153,12 @@ int main() {
         }
 
         CC1101_Send_Packet(&radio_b, packet, SAMPLES_PER_PACKET * BYTES_PER_SAMPLE);
-        CC1101_Start_RX(&radio_b);
         UART_Send_String("Toggling main loop\n");
         received = false;
         uint32_t ticks = TIM_SYS_Get_Ticks();
-        while (!received && TIM_SYS_Get_Ticks() - ticks < 2000);
+        CC1101_Start_RX(&radio_b);
+        uint32_t sleep_amt = RNG_Randint(10000, 25000);
+        while (!received && TIM_SYS_Get_Ticks() - ticks < sleep_amt);
         i++;
     }
     return 0;
