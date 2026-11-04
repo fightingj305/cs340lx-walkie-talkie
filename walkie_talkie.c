@@ -153,14 +153,15 @@ int main() {
             }
 
             CC1101_Send_Packet(&radio_b, packet, SAMPLES_PER_PACKET * BYTES_PER_SAMPLE);
-            // UART_Send_String("Toggling main loop\n");
+            UART_Send_String("Toggling main loop\n");
             i++;
             receiving = false;
         }
         else {
-            if (!receiving) CC1101_Start_RX(&radio_b);
-            receiving = true;
-            // UART_Send_String("Button not pressed\n");
+            // if (!receiving) CC1101_Start_RX(&radio_b);
+            // receiving = true;
+            CC1101_Start_RX(&radio_b);
+            UART_Send_String("Button not pressed\n");
         }
     }
     return 0;
