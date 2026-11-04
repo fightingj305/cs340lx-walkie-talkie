@@ -51,13 +51,16 @@ I2S i2s = {
     .frame_size = 32,
     .rx_data_size = 24,
     .tx_data_size = 24,
-    .bclk = bclk,// Sclk, 18
-    .fs = fs, // WS on the mic, 19
+    .bclk = bclk,// Sclk, 18 (BCK on dac)
+    .fs = fs, // WS on the mic, 19 (LCK on dac)
     .din = din, // SD on mic, 20
     .dout = dout,
     .clk = &pcm_clk 
-    // L/R mic -> GND
+    // L/R mic -> GND (SCK on dac)
 };
+
+// din DAC = dout = 21
+// 
 
 CC1101 radio = {
     .spi_device = SPI_DEVICE_1, // CSn on GPIO7 (CE1)
