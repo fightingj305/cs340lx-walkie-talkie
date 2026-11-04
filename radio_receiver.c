@@ -66,10 +66,7 @@ int main() {
     CC1101_Init(&radio_b, &CC1101_PRESET_250K);
     CC1101_Init_IRQ(&radio_b);
     CC1101_Start_RX(&radio_b);
-        }
-    }
     
-
     I2S_Init(&i2s);
     
     I2S_Enable_Comms();

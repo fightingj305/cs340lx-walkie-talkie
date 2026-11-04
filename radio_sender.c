@@ -133,36 +133,5 @@ int main() {
         GPIO_Toggle(&josh);
         i++;
     }
-
-    // while (!(GET32(DMA_Channel_4 + DMA_CS) & DMA_CS_END));         // wait for the capture to finish
-
-    // UART_Print_Hex(GET32(TIM_SYS_CLO) - t0);   // µs; expect ~256000 (0x3E800)
-    // UART_Print_Hex(GET32(PCM_CS_A));           // RXERR=bit16, RXD=bit20, DMAEN=bit9
-    // UART_Print_Hex(dma_buf[0].ti);   
-
-
-    // UART_Print_Hex(GET32(DMA_Channel_4 + DMA_CS));        // bit 1 END, bit 8 ERROR
-    // UART_Print_Hex(GET32(DMA_Channel_4 + DMA_DEST_AD));   // should end at mem_to_bus(&ring_buffer[0][BUFFER_SIZE])
-    // UART_Print_Hex(GET32(DMA_Channel_4 + DMA_TXFR_LEN));  // bytes still to go; 0 when finished
-    // UART_Print_Hex(GET32(DMA_Channel_4 + DMA_DEBUG));     // read/write error flags
-    // UART_Print_Hex(mem_to_bus((uint32_t)&ring_buffer[0][0]));
-
-
-    // for (int k = 0; k < BUFFER_SIZE; k++) {      
-    //     UART_Send_Int(k);
-    //     UART_Print_Hex(ring_buffer[0][k]);
-    // }
-
-    // uint8_t data[SAMPLES_PER_PACKET];
-    // while (1) {
-    //     // uint8_t buf[60];
-    //     uint8_t buf[1];
-    //     // for(int i = 0; i < 60; i++) buf[i] = i + 1;
-    //     // CC1101_Send_Packet(&radio, buf, sizeof(buf));
-        
-    //     GPIO_Toggle(&josh);
-    //     CC1101_Send_Packet(&radio, buf, sizeof(buf));
-    // }
-
     return 0;
 }

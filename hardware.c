@@ -16,13 +16,6 @@ const Pin sclk = {11};
 const Pin cs0 = {8};
 const Pin cs1 = {7};
 
-// previous version:
-// const SPI spi = {
-//     .speed = 20000000, // 20 MHz
-//
-// why the change: the cc1101 maxes out at 6.5 MHz for back-to-back bytes (datasheet table 22), and
-// the pi's SPI0 sends bytes with no gap, so 20 MHz is out of spec. 1 MHz is plenty for bring-up.
-// const dropped because SPI_Config takes a non-const SPI * and -Werror rejects passing &spi.
 SPI spi = {
     .speed = 10000000,
     .cpol = CPOL_0,
