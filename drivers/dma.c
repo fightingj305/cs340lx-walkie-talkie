@@ -79,5 +79,5 @@ uint32_t DMA_Get_Current_Source(DMA_Channel channel) {
 }
 
 uint32_t DMA_Get_Current_Destination(DMA_Channel channel) {
-    return bus_to_mem(((DMA_CB *) bus_to_mem(GET32(channel + DMA_CONBLK_AD)))->source_ad);
+    return bus_to_mem(((DMA_CB *) bus_to_mem(GET32(channel + DMA_CONBLK_AD)))->dest_ad);
 }
