@@ -26,6 +26,7 @@ uint32_t current_send_buffer = BUFFER_COUNT - 1;
 
 volatile uint32_t last_packet;
 volatile bool started = false;
+volatile bool received = false;
 
 void __attribute__((interrupt("IRQ"))) interrupt_vector(void) { 
     if (GPIO_Check_Any_Pin_IRQ() && GPIO_Check_Pin_IRQ(&radio_b.gdo2)) {
@@ -33,7 +34,7 @@ void __attribute__((interrupt("IRQ"))) interrupt_vector(void) {
         uint8_t mic_val[60];
         int retval = CC1101_Read_Packet(&radio_b, mic_val, 60, &status);
         if (status.crc_ok) {
-            uint32_t start = TIM_SYS_Get_Ticks();
+            received = true;
             if (!started) {
                 DMA_Start(DMA_Channel_4);
                 started = true;
@@ -150,6 +151,9 @@ int main() {
         }
 
         CC1101_Send_Packet(&radio_b, packet, SAMPLES_PER_PACKET * BYTES_PER_SAMPLE);
+        CC1101_Start_RX(&radio_b);
+        received = false;
+        while (!received);
         i++;
     }
     return 0;
