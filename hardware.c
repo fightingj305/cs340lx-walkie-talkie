@@ -77,3 +77,5 @@ CC1101 radio_b = {
 
 
 Pin josh = {26};
+
+Pin button = {10};

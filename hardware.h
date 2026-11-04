@@ -34,3 +34,4 @@ extern const Pin din;
 extern const Pin dout;
 
 extern Pin josh;
+extern Pin button;

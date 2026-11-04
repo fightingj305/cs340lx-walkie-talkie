@@ -86,6 +86,7 @@ int main() {
     I2S_Setup_DMA();
 
     GPIO_Config(&josh, OUTPUT);
+    GPIO_Config(&button, INPUT);
 
     interrupts_on();
 
@@ -126,40 +127,44 @@ int main() {
             DMA_Pause(DMA_Channel_4);
             started = false;
         }
+        if (GPIO_Read(&button) == 0 ) {
+            uint8_t packet[SAMPLES_PER_PACKET * BYTES_PER_SAMPLE];
 
-        uint8_t packet[SAMPLES_PER_PACKET * BYTES_PER_SAMPLE];
+            static uint8_t i = 0;
 
-        static uint8_t i = 0;
+            for(uint32_t packet_i = 0; packet_i < SAMPLES_PER_PACKET * BYTES_PER_SAMPLE; packet_i+= BYTES_PER_SAMPLE) {
+                for(uint32_t sample_word_i = 0; sample_word_i < BYTES_PER_SAMPLE; sample_word_i++) {
+                    if(sample_word_i == 0) {
+                        uint32_t word = send_buffer[current_send_buffer][send_head];
+                        packet[packet_i] = (word >> 16) & 0xFF;
+                        packet[packet_i + 1] = (word >> 8) & 0xFF;
+                    }
 
-        for(uint32_t packet_i = 0; packet_i < SAMPLES_PER_PACKET * BYTES_PER_SAMPLE; packet_i+= BYTES_PER_SAMPLE) {
-            for(uint32_t sample_word_i = 0; sample_word_i < BYTES_PER_SAMPLE; sample_word_i++) {
-                if(sample_word_i == 0) {
-                    uint32_t word = send_buffer[current_send_buffer][send_head];
-                    packet[packet_i] = (word >> 16) & 0xFF;
-                    packet[packet_i + 1] = (word >> 8) & 0xFF;
-                }
+                    send_head++;
 
-                send_head++;
-
-                if (send_head >= BUFFER_SIZE) {
-                    send_head = 0;
-                    uint32_t next_buffer = (current_send_buffer + 1) % BUFFER_COUNT;
-                    while (DMA_Get_Current_Destination(DMA_Channel_5) >= ((uint32_t) &send_buffer[next_buffer][0]) &&
-                        DMA_Get_Current_Destination(DMA_Channel_5) < ((uint32_t) &send_buffer[next_buffer][BUFFER_SIZE]));
-                    
-                    current_send_buffer = next_buffer;
+                    if (send_head >= BUFFER_SIZE) {
+                        send_head = 0;
+                        uint32_t next_buffer = (current_send_buffer + 1) % BUFFER_COUNT;
+                        while (DMA_Get_Current_Destination(DMA_Channel_5) >= ((uint32_t) &send_buffer[next_buffer][0]) &&
+                            DMA_Get_Current_Destination(DMA_Channel_5) < ((uint32_t) &send_buffer[next_buffer][BUFFER_SIZE]));
+                        
+                        current_send_buffer = next_buffer;
+                    }
                 }
             }
-        }
 
-        CC1101_Send_Packet(&radio_b, packet, SAMPLES_PER_PACKET * BYTES_PER_SAMPLE);
-        UART_Send_String("Toggling main loop\n");
-        received = false;
-        uint32_t ticks = TIM_SYS_Get_Ticks();
-        CC1101_Start_RX(&radio_b);
-        uint32_t sleep_amt = RNG_Randint(10000, 25000);
-        while (!received && TIM_SYS_Get_Ticks() - ticks < sleep_amt);
-        i++;
+            CC1101_Send_Packet(&radio_b, packet, SAMPLES_PER_PACKET * BYTES_PER_SAMPLE);
+            // UART_Send_String("Toggling main loop\n");
+            // received = false;
+            // uint32_t ticks = TIM_SYS_Get_Ticks();
+            // CC1101_Start_RX(&radio_b);
+            // uint32_t sleep_amt = RNG_Randint(20000, 35000);
+            // while (!received && TIM_SYS_Get_Ticks() - ticks < sleep_amt);
+            i++;
+        }
+        else {
+            CC1101_Start_RX(&radio_b);
+        }
     }
     return 0;
 }
