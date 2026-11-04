@@ -29,13 +29,16 @@ volatile uint32_t last_packet;
 volatile bool started = false;
 volatile bool receiving = true;
 
+volatile uint32_t rx_count, tx_count;
+static uint32_t last_print;
+
 void __attribute__((interrupt("IRQ"))) interrupt_vector(void) { 
     if (GPIO_Check_Any_Pin_IRQ() && GPIO_Check_Pin_IRQ(&radio_b.gdo2)) {
         CC1101_RX_Status status;
         uint8_t mic_val[60];
         int retval = CC1101_Read_Packet(&radio_b, mic_val, 60, &status);
         if (retval < 0) CC1101_Start_RX(&radio_b); // after overflow, we're in IDLE. Restart TX
-        if (status.crc_ok) {
+        if (retval > 0 && status.crc_ok) {
             // UART_Send_String("Received\n");
             if (!started) {
                 DMA_Start(DMA_Channel_4);
@@ -123,6 +126,13 @@ int main() {
     started = true;
 
     while (1) {       
+        if (TIM_SYS_Get_Ticks() - last_print > 1000000) {
+           last_print = TIM_SYS_Get_Ticks();
+            UART_Send_Int(tx_count); UART_Send_String(" tx  ");
+            UART_Send_Int(rx_count); UART_Send_String(" rx\n");
+        }
+
+
         if (started && TIM_SYS_Get_Ticks() > last_packet + 20000) {
             DMA_Pause(DMA_Channel_4);
             started = false;
@@ -154,7 +164,7 @@ int main() {
             }
 
             CC1101_Send_Packet(&radio_b, packet, SAMPLES_PER_PACKET * BYTES_PER_SAMPLE);
-            UART_Send_String("Toggling main loop\n");
+            // UART_Send_String("Toggling main loop\n");
             i++;
             receiving = false;
         }
