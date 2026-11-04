@@ -13,9 +13,11 @@ int main() {
     UART_Enable();
     UART_Send_String("Booted!\n");
     uint32_t count = 0;
+    GPIO_Config(&button, INPUT);
+
     while (1) {
         UART_Send_String("Alive ");
-        UART_Print_Int(count);
+        UART_Print_Int(GPIO_Read(&button));
         count++;
         TIM_SYS_Delay_Millis(1000);
     }

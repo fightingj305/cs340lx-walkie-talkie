@@ -27,7 +27,7 @@ uint32_t current_send_buffer = BUFFER_COUNT - 1;
 
 volatile uint32_t last_packet;
 volatile bool started = false;
-volatile bool received = false;
+volatile bool receiving = true;
 
 void __attribute__((interrupt("IRQ"))) interrupt_vector(void) { 
     if (GPIO_Check_Any_Pin_IRQ() && GPIO_Check_Pin_IRQ(&radio_b.gdo2)) {
@@ -36,7 +36,6 @@ void __attribute__((interrupt("IRQ"))) interrupt_vector(void) {
         int retval = CC1101_Read_Packet(&radio_b, mic_val, 60, &status);
         if (status.crc_ok) {
             UART_Send_String("Received\n");
-            received = true;
             if (!started) {
                 DMA_Start(DMA_Channel_4);
                 started = true;
@@ -155,15 +154,13 @@ int main() {
 
             CC1101_Send_Packet(&radio_b, packet, SAMPLES_PER_PACKET * BYTES_PER_SAMPLE);
             // UART_Send_String("Toggling main loop\n");
-            // received = false;
-            // uint32_t ticks = TIM_SYS_Get_Ticks();
-            // CC1101_Start_RX(&radio_b);
-            // uint32_t sleep_amt = RNG_Randint(20000, 35000);
-            // while (!received && TIM_SYS_Get_Ticks() - ticks < sleep_amt);
             i++;
+            receiving = false;
         }
         else {
-            CC1101_Start_RX(&radio_b);
+            if (!receiving) CC1101_Start_RX(&radio_b);
+            receiving = true;
+            // UART_Send_String("Button not pressed\n");
         }
     }
     return 0;
