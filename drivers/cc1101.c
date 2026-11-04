@@ -120,7 +120,8 @@ void CC1101_Init(CC1101 *cc1101, const CC1101_Preset *preset) {
     CC1101_Set_Reg(cc1101, CC1101_MCSM0, 0x8);    // No Calibrate every time, PO_TIMEOUT = 2
     CC1101_Set_Reg(cc1101, CC1101_PKTCTRL0, 0x04); // whitening off, FIFO mode, CRC on, variable length
     CC1101_Set_Reg(cc1101, CC1101_MCSM0, 0x18);    // calibrate on IDLE->RX/TX, PO_TIMEOUT = 2
-    CC1101_Set_Reg(cc1101, CC1101_MCSM1, 0x30);    // CCA default, go to IDLE after RX and after TX
+    // CC1101_Set_Reg(cc1101, CC1101_MCSM1, 0x30);    // CCA default, go to IDLE after RX and after TX
+    CC1101_Set_Reg(cc1101, CC1101_MCSM1, 0x3C);    // Stay in RX after RX! Used for Push to Talk
     CC1101_Set_Reg(cc1101, CC1101_FREQ2, (CC1101_FREQ_WORD >> 16) & 0xFF);
     CC1101_Set_Reg(cc1101, CC1101_FREQ1, (CC1101_FREQ_WORD >> 8) & 0xFF);
     CC1101_Set_Reg(cc1101, CC1101_FREQ0, CC1101_FREQ_WORD & 0xFF);

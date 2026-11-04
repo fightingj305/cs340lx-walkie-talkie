@@ -158,10 +158,10 @@ int main() {
             receiving = false;
         }
         else {
-            // if (!receiving) CC1101_Start_RX(&radio_b);
-            // receiving = true;
-            CC1101_Start_RX(&radio_b);
-            UART_Send_String("Button not pressed\n");
+            // After RX, HW stays in RX. So, only manually switch after done with button/TX
+            if (!receiving) CC1101_Start_RX(&radio_b);
+            receiving = true;
+            // UART_Send_String("Button not pressed\n");
         }
     }
     return 0;
