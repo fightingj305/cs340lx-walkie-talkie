@@ -34,6 +34,7 @@ void __attribute__((interrupt("IRQ"))) interrupt_vector(void) {
         uint8_t mic_val[60];
         int retval = CC1101_Read_Packet(&radio_b, mic_val, 60, &status);
         if (status.crc_ok) {
+            UART_Send_String("Received\n");
             received = true;
             if (!started) {
                 DMA_Start(DMA_Channel_4);
@@ -55,7 +56,7 @@ void __attribute__((interrupt("IRQ"))) interrupt_vector(void) {
             last_packet = TIM_SYS_Get_Ticks();
         }
         GPIO_Clear_IRQ(&radio_b.gdo2);
-        CC1101_Start_RX(&radio_b);
+        // CC1101_Start_RX(&radio_b);
     }
     else {
         PANIC("Unexpected interrupt!");
@@ -119,7 +120,7 @@ int main() {
     DMA_Start(DMA_Channel_5);
     started = true;
 
-    while (1) {
+    while (1) {       
         if (started && TIM_SYS_Get_Ticks() > last_packet + 20000) {
             DMA_Pause(DMA_Channel_4);
             started = false;
@@ -152,8 +153,10 @@ int main() {
 
         CC1101_Send_Packet(&radio_b, packet, SAMPLES_PER_PACKET * BYTES_PER_SAMPLE);
         CC1101_Start_RX(&radio_b);
+        UART_Send_String("Toggling main loop\n");
         received = false;
-        while (!received);
+        uint32_t ticks = TIM_SYS_Get_Ticks();
+        while (!received && TIM_SYS_Get_Ticks() - ticks < 2000);
         i++;
     }
     return 0;
