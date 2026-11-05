@@ -142,7 +142,7 @@ int main() {
            last_print = TIM_SYS_Get_Ticks();
             UART_Send_Int(tx_count); UART_Send_String(" tx  ");
             UART_Send_Int(rx_count); UART_Send_String(" rx  ");
-            UART_Send_Int(recv_collisions); UART_Send_String(" recv collisions ");
+            UART_Send_Int(recv_collisions); UART_Send_String(" recv collisions\n");
         }
 
 
