@@ -4,7 +4,9 @@
 #include "hardware.h"
 #include "utils.h"
 #include "dma.h"
+#include "beep.h"
 #include "rng.h"
+
 
 DMA_SECTION DMA_CB dma_buf[16];
 DMA_SECTION DMA_CB dma_buf2[16];
@@ -34,6 +36,10 @@ static uint32_t last_print;
 static uint32_t last_check;
 static volatile uint32_t recv_collisions;
 
+#define DEBOUNCE_DELAY 1000
+static bool last_button = true;
+static bool debounce_timer_on = false;
+
 void __attribute__((interrupt("IRQ"))) interrupt_vector(void) { 
     if (GPIO_Check_Any_Pin_IRQ() && GPIO_Check_Pin_IRQ(&radio_b.gdo2)) {
         CC1101_RX_Status status;
@@ -44,14 +50,11 @@ void __attribute__((interrupt("IRQ"))) interrupt_vector(void) {
             rx_count++;
             // UART_Send_String("Received\n");
             if (!started) {
-                // Try starting DMA recv from just in front of where speaker is playing
                 uint32_t play = (DMA_Get_Current_Source(DMA_Channel_4) - (uint32_t)&recv_buffer[0][0]) / (4 * BUFFER_SIZE);
-                current_recv_buffer = (play + 2) % BUFFER_COUNT;   // write 2 buffers (~64 ms) ahead of the speaker
+                current_recv_buffer = (play + 2) % BUFFER_COUNT;   // write 2 buffers ahead of the speaker
                 recv_head = 0;
                 DMA_Start(DMA_Channel_4);
                 started = true;
-                // DMA_Start(DMA_Channel_4);
-                // started = true;
             }
             for (uint32_t i = 0; i < 60; i+=2) {
                 uint32_t value = mic_val[i] << 16 | mic_val[i+1] << 8;
@@ -145,15 +148,67 @@ int main() {
             UART_Send_Int(rx_count); UART_Send_String(" rx  ");
             UART_Send_Int(recv_collisions); UART_Send_String(" recv collisions\n");
         }
-
+        
         if (started && TIM_SYS_Get_Ticks() > last_packet + 20000) {
             DMA_Pause(DMA_Channel_4);
             started = false;
         }
-        if (GPIO_Read(&button) == 0 ) {
-            uint8_t packet[SAMPLES_PER_PACKET * BYTES_PER_SAMPLE];
 
-            static uint8_t i = 0;
+        bool button_state = GPIO_Read(&button);
+        static uint32_t debounce_time_start;
+        if ((button_state != last_button) && !debounce_timer_on){
+            debounce_time_start = TIM_SYS_Get_Ticks();
+            debounce_timer_on = true;
+        }
+        if (debounce_timer_on && TIM_SYS_Get_Ticks() - debounce_time_start > DEBOUNCE_DELAY) {
+            debounce_timer_on = false;
+            if (button_state != last_button) {
+                receiving = button_state;
+                if (receiving) {
+                    DMA_Start(DMA_Channel_4);
+                    UART_Send_String("Dma on\n");
+                    uint32_t curr_buffer = (DMA_Get_Current_Source(DMA_Channel_4) - (uint32_t)&recv_buffer[0][0]) / (4 * BUFFER_SIZE) + 1;
+                    uint32_t start_buffer = curr_buffer;
+                    for (uint32_t i = 0; i < BEEP_SIZE; i++) {
+                        if (i % BUFFER_SIZE == 0) {
+                            curr_buffer++;
+                        }
+                        recv_buffer[curr_buffer][i % BUFFER_SIZE] = beep[i];
+                    }
+                    TIM_SYS_Delay_Millis(250);
+                    for (uint32_t i = 0; i < BUFFER_COUNT; i++) {
+                        for (uint32_t j = 0; j < BUFFER_SIZE; j++) {
+                            recv_buffer[i][j] = 0;
+                        }
+                    }
+
+                    interrupts_on();
+                    CC1101_Start_RX(&radio_b);
+                }
+                else {
+                    interrupts_off();
+
+                    DMA_Start(DMA_Channel_4);
+                    uint32_t curr_buffer = (DMA_Get_Current_Source(DMA_Channel_4) - (uint32_t)&recv_buffer[0][0]) / (4 * BUFFER_SIZE) + 1;
+                    for (uint32_t i = 0; i < BEEP_SIZE; i++) {
+                        if (i % BUFFER_SIZE == 0) {
+                            curr_buffer++;
+                        }
+                        recv_buffer[curr_buffer][i % BUFFER_SIZE] = beep[BEEP_SIZE - 1 - i];
+                    }
+                    TIM_SYS_Delay_Millis(300);
+                    DMA_Pause(DMA_Channel_4);
+                    started = false;
+
+                }
+            }
+        }
+        if (!debounce_timer_on) {
+            last_button = button_state;
+        }
+
+        if (!receiving) {
+            uint8_t packet[SAMPLES_PER_PACKET * BYTES_PER_SAMPLE];
 
             for(uint32_t packet_i = 0; packet_i < SAMPLES_PER_PACKET * BYTES_PER_SAMPLE; packet_i+= BYTES_PER_SAMPLE) {
                 for(uint32_t sample_word_i = 0; sample_word_i < BYTES_PER_SAMPLE; sample_word_i++) {
@@ -179,21 +234,10 @@ int main() {
             CC1101_Send_Packet(&radio_b, packet, SAMPLES_PER_PACKET * BYTES_PER_SAMPLE);
             // UART_Send_String("Toggling main loop\n");
             tx_count++;
-            i++;
-            receiving = false;
         }
         else {
-            if (TIM_SYS_Get_Ticks() - last_check > 10000) {
-                last_check = TIM_SYS_Get_Ticks();
-                interrupts_off();
-                uint8_t state = CC1101_Read_Status_Reg(&radio_b, CC1101_MARCSTATE) & 0x1F;
-                if (state == CC1101_MARC_IDLE || state == CC1101_MARC_RXFIFO_OVERFLOW)
-                    CC1101_Start_RX(&radio_b);
-                interrupts_on();
-            }
             // After RX, HW stays in RX. So, only manually switch after done with button/TX
-            if (!receiving) CC1101_Start_RX(&radio_b);
-            receiving = true;
+            // if (!receiving) CC1101_Start_RX(&radio_b);
             // UART_Send_String("Button not pressed\n");
         }
     }
