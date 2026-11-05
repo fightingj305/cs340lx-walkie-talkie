@@ -31,6 +31,7 @@ volatile bool receiving = true;
 
 volatile uint32_t rx_count, tx_count;
 static uint32_t last_print;
+static volatile uint32_t recv_collisions;
 
 void __attribute__((interrupt("IRQ"))) interrupt_vector(void) { 
     if (GPIO_Check_Any_Pin_IRQ() && GPIO_Check_Pin_IRQ(&radio_b.gdo2)) {
@@ -42,8 +43,14 @@ void __attribute__((interrupt("IRQ"))) interrupt_vector(void) {
             rx_count++;
             // UART_Send_String("Received\n");
             if (!started) {
+                // Try starting DMA recv from just in front of where speaker is playing
+                uint32_t play = (DMA_Get_Current_Source(DMA_Channel_4) - (uint32_t)&recv_buffer[0][0]) / (4 * BUFFER_SIZE);
+                current_recv_buffer = (play + 2) % BUFFER_COUNT;   // write 2 buffers (~64 ms) ahead of the speaker
+                recv_head = 0;
                 DMA_Start(DMA_Channel_4);
                 started = true;
+                // DMA_Start(DMA_Channel_4);
+                // started = true;
             }
             for (uint32_t i = 0; i < 60; i+=2) {
                 uint32_t value = mic_val[i] << 16 | mic_val[i+1] << 8;
@@ -52,8 +59,12 @@ void __attribute__((interrupt("IRQ"))) interrupt_vector(void) {
                 if (recv_head >= BUFFER_SIZE) {
                     recv_head = 0;
                     uint32_t next_buffer = (current_recv_buffer + 1) % BUFFER_COUNT;
-                    while (DMA_Get_Current_Source(DMA_Channel_4) >= ((uint32_t)&recv_buffer[next_buffer][0]) &&
+                    // while (DMA_Get_Current_Source(DMA_Channel_4) >= ((uint32_t)&recv_buffer[next_buffer][0]) &&
+                    //     DMA_Get_Current_Source(DMA_Channel_4) <((uint32_t)&recv_buffer[next_buffer][BUFFER_SIZE])) {
+                    // }
+                    if (DMA_Get_Current_Source(DMA_Channel_4) >= ((uint32_t)&recv_buffer[next_buffer][0]) &&
                         DMA_Get_Current_Source(DMA_Channel_4) <((uint32_t)&recv_buffer[next_buffer][BUFFER_SIZE])) {
+                            recv_collisions++;
                     }
                     current_recv_buffer = next_buffer;
                 }
@@ -130,7 +141,8 @@ int main() {
         if (TIM_SYS_Get_Ticks() - last_print > 1000000) {
            last_print = TIM_SYS_Get_Ticks();
             UART_Send_Int(tx_count); UART_Send_String(" tx  ");
-            UART_Send_Int(rx_count); UART_Send_String(" rx\n");
+            UART_Send_Int(rx_count); UART_Send_String(" rx  ");
+            UART_Send_Int(recv_collisions); UART_Send_String(" recv collisions ");
         }
 
 
