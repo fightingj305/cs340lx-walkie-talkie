@@ -31,6 +31,7 @@ volatile bool receiving = true;
 
 volatile uint32_t rx_count, tx_count;
 static uint32_t last_print;
+static uint32_t last_check;
 static volatile uint32_t recv_collisions;
 
 void __attribute__((interrupt("IRQ"))) interrupt_vector(void) { 
@@ -144,7 +145,14 @@ int main() {
             UART_Send_Int(rx_count); UART_Send_String(" rx  ");
             UART_Send_Int(recv_collisions); UART_Send_String(" recv collisions\n");
         }
-
+        
+        if (TIM_SYS_Get_Ticks() - last_check > 10000) {
+            last_check = TIM_SYS_Get_Ticks();
+            interrupts_off();
+            uint8_t state = CC1101_Read_Status_Reg(&radio_b, CC1101_MARCSTATE) & 0x1F;
+            if (state == CC1101_MARC_IDLE || state == CC1101_MARC_RXFIFO_OVERFLOW)
+                interrupts_on();
+        }
 
         if (started && TIM_SYS_Get_Ticks() > last_packet + 20000) {
             DMA_Pause(DMA_Channel_4);
