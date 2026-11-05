@@ -39,6 +39,7 @@ void __attribute__((interrupt("IRQ"))) interrupt_vector(void) {
         int retval = CC1101_Read_Packet(&radio_b, mic_val, 60, &status);
         if (retval < 0) CC1101_Start_RX(&radio_b); // after overflow, we're in IDLE. Restart TX
         if (retval > 0 && status.crc_ok) {
+            rx_count++;
             // UART_Send_String("Received\n");
             if (!started) {
                 DMA_Start(DMA_Channel_4);
@@ -165,6 +166,7 @@ int main() {
 
             CC1101_Send_Packet(&radio_b, packet, SAMPLES_PER_PACKET * BYTES_PER_SAMPLE);
             // UART_Send_String("Toggling main loop\n");
+            tx_count++;
             i++;
             receiving = false;
         }
