@@ -145,14 +145,6 @@ int main() {
             UART_Send_Int(rx_count); UART_Send_String(" rx  ");
             UART_Send_Int(recv_collisions); UART_Send_String(" recv collisions\n");
         }
-        
-        if (TIM_SYS_Get_Ticks() - last_check > 10000) {
-            last_check = TIM_SYS_Get_Ticks();
-            interrupts_off();
-            uint8_t state = CC1101_Read_Status_Reg(&radio_b, CC1101_MARCSTATE) & 0x1F;
-            if (state == CC1101_MARC_IDLE || state == CC1101_MARC_RXFIFO_OVERFLOW)
-                interrupts_on();
-        }
 
         if (started && TIM_SYS_Get_Ticks() > last_packet + 20000) {
             DMA_Pause(DMA_Channel_4);
@@ -191,6 +183,14 @@ int main() {
             receiving = false;
         }
         else {
+            if (TIM_SYS_Get_Ticks() - last_check > 10000) {
+                last_check = TIM_SYS_Get_Ticks();
+                interrupts_off();
+                uint8_t state = CC1101_Read_Status_Reg(&radio_b, CC1101_MARCSTATE) & 0x1F;
+                if (state == CC1101_MARC_IDLE || state == CC1101_MARC_RXFIFO_OVERFLOW)
+                    CC1101_Start_RX(&radio_b);
+                interrupts_on();
+            }
             // After RX, HW stays in RX. So, only manually switch after done with button/TX
             if (!receiving) CC1101_Start_RX(&radio_b);
             receiving = true;
