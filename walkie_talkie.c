@@ -63,9 +63,6 @@ void __attribute__((interrupt("IRQ"))) interrupt_vector(void) {
                 if (recv_head >= BUFFER_SIZE) {
                     recv_head = 0;
                     uint32_t next_buffer = (current_recv_buffer + 1) % BUFFER_COUNT;
-                    // while (DMA_Get_Current_Source(DMA_Channel_4) >= ((uint32_t)&recv_buffer[next_buffer][0]) &&
-                    //     DMA_Get_Current_Source(DMA_Channel_4) <((uint32_t)&recv_buffer[next_buffer][BUFFER_SIZE])) {
-                    // }
                     if (DMA_Get_Current_Source(DMA_Channel_4) >= ((uint32_t)&recv_buffer[next_buffer][0]) &&
                         DMA_Get_Current_Source(DMA_Channel_4) <((uint32_t)&recv_buffer[next_buffer][BUFFER_SIZE])) {
                             recv_collisions++;
@@ -166,12 +163,12 @@ int main() {
                 receiving = button_state;
                 if (receiving) {
                     DMA_Start(DMA_Channel_4);
-                    UART_Send_String("Dma on\n");
+                    UART_Send_String("Starting recv\n");
                     uint32_t curr_buffer = (DMA_Get_Current_Source(DMA_Channel_4) - (uint32_t)&recv_buffer[0][0]) / (4 * BUFFER_SIZE) + 1;
-                    uint32_t start_buffer = curr_buffer;
                     for (uint32_t i = 0; i < BEEP_SIZE; i++) {
                         if (i % BUFFER_SIZE == 0) {
                             curr_buffer++;
+                            curr_buffer %= BUFFER_COUNT;
                         }
                         recv_buffer[curr_buffer][i % BUFFER_SIZE] = beep[i];
                     }
@@ -182,17 +179,19 @@ int main() {
                         }
                     }
 
-                    interrupts_on();
                     CC1101_Start_RX(&radio_b);
+                    interrupts_on();
                 }
                 else {
                     interrupts_off();
+                    UART_Send_String("Starting transmit\n");
 
                     DMA_Start(DMA_Channel_4);
                     uint32_t curr_buffer = (DMA_Get_Current_Source(DMA_Channel_4) - (uint32_t)&recv_buffer[0][0]) / (4 * BUFFER_SIZE) + 1;
                     for (uint32_t i = 0; i < BEEP_SIZE; i++) {
                         if (i % BUFFER_SIZE == 0) {
                             curr_buffer++;
+                            curr_buffer %= BUFFER_COUNT;
                         }
                         recv_buffer[curr_buffer][i % BUFFER_SIZE] = beep[BEEP_SIZE - 1 - i];
                     }

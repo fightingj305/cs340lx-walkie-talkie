@@ -268,10 +268,7 @@ int CC1101_Read_Packet(CC1101 *cc1101, uint8_t *buf, uint8_t max_len, CC1101_RX_
     // no = {0} initializers: gcc turns them into memset, which we don't have with -nostdlib
     uint8_t tx[CC1101_FIFO_SIZE + 1];
     uint8_t rx[CC1101_FIFO_SIZE + 1];
-    // ASSERT(count <= CC1101_FIFO_SIZE);
-    if (count > CC1101_FIFO_SIZE) {
-        return -1;
-    }
+    ASSERT(count <= CC1101_FIFO_SIZE);
     tx[0] = CC1101_FIFO | CC1101_READ_BURST;
     for (uint8_t i = 1; i <= count; i++) {
         tx[i] = 0;
